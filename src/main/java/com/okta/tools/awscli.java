@@ -71,6 +71,9 @@ public class awscli {
     private static String oktaAWSAppURL = "";
     private static String awsIamKey = null;
     private static String awsIamSecret = null;
+    private static String propOktaUsername = null;
+    private static String propOktaPassword = null;
+    private static String propAwsRole = null;
     private static AuthApiClient authClient;
 
     private static FactorsApiClient factorClient;
@@ -83,7 +86,7 @@ public class awscli {
 
     public static void main(String[] args) throws Exception {
         awsSetup();
-        extractCredentials();
+        extractCredentials(args);
 
         // Part 1: Initiate the authentication and capture the SAML assertion.
         CloseableHttpClient httpClient = null;
@@ -136,25 +139,38 @@ public class awscli {
         //Redo sequence if response from AWS doesn't return 200 Status
         while(requestStatus != 200){
 
-            // Prompt for user credentials
-            System.out.print("Username: ");
+            String oktaUsername = propOktaUsername, oktaPassword = propOktaPassword;
+
             Scanner scanner = new Scanner(System.in);
 
-            String oktaUsername = scanner.next();
+            if (oktaUsername == null) {
+                // Prompt for user credentials
+                System.out.print("Username: ");
+                oktaUsername = scanner.next();
+            } else {
+                System.out.println(String.format("Connecting as %s", propOktaUsername));
+            }
 
-            Console console = System.console();
-            String oktaPassword = null;
-            if (console != null) {
-                oktaPassword = new String(console.readPassword("Password: "));
-            } else { // hack to be able to debug in an IDE
-                System.out.print("Password: ");
-
-                oktaPassword = scanner.next();
+            if (oktaPassword == null) {
+                Console console = System.console();
+                if (console != null) {
+                    oktaPassword = new String(console.readPassword("Password: "));
+                } else { // hack to be able to debug in an IDE
+                    System.out.print("Password: ");
+                    oktaPassword = scanner.next();
+                }
             }
 
             responseAuthenticate = authnticateCredentials(oktaUsername, oktaPassword);
             requestStatus = responseAuthenticate.getStatusLine().getStatusCode();
             authnFailHandler(requestStatus, responseAuthenticate);
+
+            if (propOktaPassword != null) {
+                if (requestStatus != 200) {
+                    System.exit(0);
+                }
+                break;
+            }
         }
 
         //Retrieve and parse the Okta response for session token
@@ -226,7 +242,7 @@ public class awscli {
     }
 
     /* Parses application's config file for app URL and Okta Org */
-    private static void extractCredentials() throws IOException {
+    private static void extractCredentials(String[] args) throws IOException {
         //BufferedReader oktaBr = new BufferedReader(new FileReader(new File (System.getProperty("user.dir")) +"/oktaAWSCLI.config"));
         //RL, 2016-02-25, moving to properties file
         String strLocalFolder = System.getProperty("user.dir");
@@ -242,6 +258,28 @@ public class awscli {
         oktaAWSAppURL = props.getProperty("OKTA_AWS_APP_URL");
         awsIamKey  = props.getProperty("AWS_IAM_KEY");
         awsIamSecret  = props.getProperty("AWS_IAM_SECRET");
+
+        propOktaUsername = props.getProperty("OKTA_USERNAME");
+        propOktaPassword = props.getProperty("OKTA_PASSWORD");
+        propAwsRole = props.getProperty("AWS_ROLE_NUM");
+
+        if (args.length > 0) {
+            int i = 0;
+            while(i + 1 < args.length) {
+                String val = args[i+1];
+                if (args[i].equals("-u")) {
+                    propOktaUsername = val;
+                } else if(args[i].equals("-p")) {
+                    propOktaPassword = val;
+                } else if(args[i].equals("-r")) {
+                    propAwsRole = val;
+                } else if(args[i].equals("-l")) {
+                    oktaAWSAppURL = val;
+                }
+                i += 2;
+            }
+        }
+
 /*		String line = oktaBr.readLine();
         while(line!=null){
 			if(line.contains("OKTA_ORG")){
@@ -303,6 +341,11 @@ public class awscli {
 
     /* Handles user selection prompts */
     private static int numSelection(int max) {
+        if (propAwsRole != null) {
+            System.out.print(String.format("Selection: %s", propAwsRole));
+            return Integer.parseInt(propAwsRole);
+        }
+
         Scanner scanner = new Scanner(System.in);
 
         int selection = -1;

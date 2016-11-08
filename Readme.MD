@@ -56,8 +56,11 @@ Here is the list of parameters that must be maintained in the ```config.properti
     - Your link is located under ```EMBED LINK``` 
   - Replace the example values in ```config.properties``` with your values
 
+You may also define `OKTA_USERNAME`, `OKTA_PASSWORD`, `AWS_ROLE_NUM` if you don't want to get them from system input.
+
 ##Running the application
   - To run the application, you can use  the ```awscli.command``` file you will find in the ```out``` folder. You may need to edit to fix the references to the AWS Java SDK, which we remind you to put into the ```lib``` directory.
   - Navigate to the ```out``` sub-folder with Terminal and run ```./awscli.command``` 
   - The default command is the following: ```java -classpath oktaawscli.jar:$HOME/Projects/okta-aws-cli-assume-role/lib/aws-java-sdk-1.10.74.jar:$HOME/Projects/okta-aws-cli-assume-role/lib/okta-sdk.jar com.okta.tools.awscli```
+  - You can specify username (-u), password (-p), role (-r) and application url (-l) as command line arguments which will override values from the properties' file, for example: ```java -classpath oktaawscli.jar:$HOME/Projects/okta-aws-cli-assume-role/lib/aws-java-sdk-1.10.74.jar:$HOME/Projects/okta-aws-cli-assume-role/lib/okta-sdk.jar com.okta.tools.awscli -u YOUR_USERNAME -p YOUR_PASSWORD -r ROLE_NUM -l APPLICATION_URL```
   
